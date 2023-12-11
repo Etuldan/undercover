@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -167,7 +167,7 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			log.Println("incoming message", string(message))
+			log.WithField("Message", message).Info("incoming message")
 
 			w.Write(message)
 

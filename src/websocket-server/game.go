@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type Game struct {
@@ -58,7 +57,7 @@ func (g *Game) play(data *gameData) {
 					maxVote = vote
 				}
 			}
-			fmt.Println("max vote", maxVote)
+			log.WithField("maxVote", maxVote).Info("Vote")
 		}
 	}
 
@@ -89,6 +88,4 @@ func (g *Game) start(data *hubData) {
 	}
 	g.Players[random1].Role = Undercover
 	g.Players[random2].Role = White
-
-	fmt.Println("Game Start")
 }

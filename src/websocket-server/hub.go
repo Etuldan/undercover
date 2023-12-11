@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type hubData struct {
@@ -101,8 +102,8 @@ func (h *Hub) run() {
 			player.Rank = Host
 			game.Players = append(game.Players, *player)
 			h.games[game] = false
+			log.WithField("GameInfo", game).Info("Game created")
 			data.sendMessage("create ok")
-
 			h.sendGameStatus(game)
 
 		case data := <-h.join:
@@ -117,6 +118,8 @@ func (h *Hub) run() {
 
 					player := newPlayer(data.Nickname, data.Client)
 					game.Players = append(game.Players, *player)
+					log.WithField("GameInfo", game).Info("Player joined")
+
 					data.sendMessage("join ok")
 
 					h.sendGameStatus(game)
@@ -130,6 +133,7 @@ func (h *Hub) run() {
 					for i, player := range game.Players {
 						if player.Nickname == data.Nickname {
 							game.Players = append(game.Players[:i], game.Players[i+1:]...)
+							log.WithField("GameInfo", game).Info("Player kicked")
 							data.sendMessage("kick ok")
 							break selectLoop
 						}
@@ -153,6 +157,7 @@ func (h *Hub) run() {
 						// Leave
 						if player.Client == data.Client {
 							game.Players = append(game.Players[:i], game.Players[i+1:]...)
+							log.WithField("GameInfo", game).Info("Player leaved")
 							data.sendMessage("game leave ok")
 							break
 						}
@@ -165,6 +170,7 @@ func (h *Hub) run() {
 						}
 						game.Players = nil
 						delete(h.games, game)
+						log.WithField("GameId", data.GameId).Info("Game destroy")
 					}
 				}
 			}
@@ -176,6 +182,7 @@ func (h *Hub) run() {
 						if player.Client == data.Client && player.Rank == Host {
 							game.start(data)
 							data.sendMessage("start ok")
+							log.WithField("GameInfo", game).Info("Game started")
 
 							h.sendGameStatus(game)
 							h.games[game] = true

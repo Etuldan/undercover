@@ -1,0 +1,9 @@
+# Server configurations
+server:
+  host: "localhost"
+  port: 8080
+
+# Seq credentials
+seq:
+  url: "http://localhost:5341"
+  apikey: "srY2sdPMLBMAd3ZX6tgK"
