@@ -18,23 +18,26 @@ func main() {
 	f, err := os.Open("config.yml")
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 	var cfg Config
 	decoder := yaml.NewDecoder(f)
 	err = decoder.Decode(&cfg)
 	if err != nil {
 		fmt.Println(err)
+		f.Close()
+		os.Exit(1)
 	}
 	defer f.Close()
 
 	log.AddHook(logruseq.NewSeqHook(cfg.Seq.Url, logruseq.OptionAPIKey(cfg.Seq.ApiKey)))
-	log.Info("Starting Websocket ...")
+	log.WithField("config", cfg).Info("Starting Websocket ...")
 
 	flag.Parse()
 	hub := newHub()
 	go hub.run()
 
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/"+cfg.Server.Endpoint, func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
 
