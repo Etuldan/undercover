@@ -111,7 +111,7 @@ func (h *Hub) run() {
 				if !h.isGameStarted(game) && game.Id == data.GameId {
 					for _, player := range game.Players {
 						if player.Nickname == data.Nickname {
-							data.sendMessage("join ko")
+							data.Client.sendError(*newErr(NicknameNotAvailable, "Invalid Nickname"))
 							break selectLoop
 						}
 					}
@@ -126,6 +126,7 @@ func (h *Hub) run() {
 					break
 				}
 			}
+			data.Client.sendError(*newErr(GameNotFound, "Invalid Game"))
 
 		case data := <-h.kick:
 			for game := range h.games {
