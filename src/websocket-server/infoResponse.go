@@ -1,19 +1,11 @@
 package main
 
-import (
-	"encoding/json"
-)
-
 type InfoResponse struct {
-	Message string `json:"message"`
+	Message  string `json:"message"`
+	GameInfo Game   `json:"gameInfo"`
 }
 
-func (client *Client) sendInfo(err InfoResponse) {
-	msg, _ := json.Marshal(err)
-	client.send <- []byte(msg)
-}
-
-func newInfo(code ErrorCode, message string) *InfoResponse {
+func newInfo(message string) *InfoResponse {
 	return &InfoResponse{
 		Message: message,
 	}

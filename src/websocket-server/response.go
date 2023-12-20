@@ -6,17 +6,10 @@ import (
 
 type Response struct {
 	Error ErrorResponse `json:"error"`
-	Info  InfoResponse  `json:"message"`
+	Info  InfoResponse  `json:"info"`
 }
 
-func (client *Client) sendResponse(err Response) {
-	msg, _ := json.Marshal(err)
+func (client *Client) sendResponse(response Response) {
+	msg, _ := json.Marshal(response)
 	client.send <- []byte(msg)
-}
-
-func newResponse(errorResponse ErrorResponse, infoResponse InfoResponse) *Response {
-	return &Response{
-		Error: errorResponse,
-		Info:  infoResponse,
-	}
 }
