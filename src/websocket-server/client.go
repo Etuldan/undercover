@@ -117,12 +117,12 @@ func (c *Client) readPump() {
 		if command[0] == "play" {
 			gameUuid, _ := uuid.Parse(command[1])
 			socketData := &hubData{
-				Client:   c,
-				GameId:   gameUuid,
-				Nickname: command[2],
+				Client: c,
+				GameId: gameUuid,
 			}
 			data := &gameData{
 				hubData: *socketData,
+				Command: command[2],
 			}
 			c.hub.play <- data
 			continue
@@ -137,8 +137,6 @@ func (c *Client) readPump() {
 			c.hub.leave <- socketData
 			continue
 		}
-
-		//c.hub.broadcast <- message
 	}
 }
 
