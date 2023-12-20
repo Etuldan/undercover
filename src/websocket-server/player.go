@@ -10,8 +10,9 @@ const (
 type Player struct {
 	Nickname string  `json:"nickname"`
 	Rank     Rank    `json:"rank"`
-	Role     Role    `json:"role"`
+	Role     Role    `json:"-"`
 	Client   *Client `json:"-"`
+	Position int     `json:"position"`
 }
 
 type Role int
