@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -13,15 +11,10 @@ type hubData struct {
 	Nickname string    `json:"nickname"`
 }
 
-// Hub maintains the set of active clients and broadcasts messages to the
-// clients.
 type Hub struct {
 	// Registered clients.
 	clients map[*Client]bool
 	games   map[*Game]bool
-
-	// Inbound messages from the clients.
-	broadcast chan []byte
 
 	create chan *hubData
 	join   chan *hubData
@@ -43,7 +36,6 @@ func newHub() *Hub {
 		leave:  make(chan *hubData),
 		play:   make(chan *gameData),
 
-		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
@@ -56,63 +48,59 @@ func (h *Hub) isGameStarted(game *Game) bool {
 }
 
 func (h *Hub) sendGameStatus(game *Game) {
-	msg, _ := json.Marshal(game)
+	info := newInfo("status")
+	info.GameInfo = *game
+	successResult := Response{Info: *info}
 	for _, player := range game.Players {
-		player.Client.send <- msg
+		player.Client.sendResponse(successResult)
 	}
 }
 
-func (d hubData) sendMessage(msg string) {
-	d.Client.send <- []byte(msg)
-}
-
-func (h *Hub) run() {
-	for {
-	selectLoop:
-		select {
-		case client := <-h.register:
-			h.clients[client] = true
-		case client := <-h.unregister:
-			if _, ok := h.clients[client]; ok {
-				for game := range h.games {
-					for i, player := range game.Players {
-						if player.Client == client {
-							game.Players = append(game.Players[:i], game.Players[i+1:]...)
-						}
+func caseLoop(h *Hub) {
+	select {
+	case client := <-h.register:
+		h.clients[client] = true
+	case client := <-h.unregister:
+		if _, ok := h.clients[client]; ok {
+			for game := range h.games {
+				for i, player := range game.Players {
+					if player.Client == client {
+						game.Players = append(game.Players[:i], game.Players[i+1:]...)
 					}
 				}
-				delete(h.clients, client)
-				close(client.send)
 			}
+			delete(h.clients, client)
+			close(client.send)
+		}
 
-		case message := <-h.broadcast:
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
-			}
+	case data := <-h.create:
+		game := newGame(data.GameId)
 
-		case data := <-h.create:
-			game := newGame(data.GameId)
+		player := newPlayer(data.Nickname, data.Client)
+		player.Rank = Host
+		game.Players = append(game.Players, *player)
+		h.games[game] = false
+		log.WithField("GameInfo", game).Info("Game created")
+		info := newInfo("Game created")
+		info.GameInfo = *game
+		result := Response{Info: *info}
+		data.Client.sendResponse(result)
 
-			player := newPlayer(data.Nickname, data.Client)
-			player.Rank = Host
-			game.Players = append(game.Players, *player)
-			h.games[game] = false
-			log.WithField("GameInfo", game).Info("Game created")
-			data.sendMessage("create ok")
-			h.sendGameStatus(game)
-
-		case data := <-h.join:
-			for game := range h.games {
-				if !h.isGameStarted(game) && game.Id == data.GameId {
+	case data := <-h.join:
+		for game := range h.games {
+			if game.Id == data.GameId {
+				if h.isGameStarted(game) {
+					err := newErr(IncorrectGameState, "Game already started")
+					result := Response{Error: *err}
+					data.Client.sendResponse(result)
+					return
+				} else {
 					for _, player := range game.Players {
 						if player.Nickname == data.Nickname {
-							data.Client.sendError(*newErr(NicknameNotAvailable, "Invalid Nickname"))
-							break selectLoop
+							err := newErr(NicknameNotAvailable, "Nickname already taken")
+							result := Response{Error: *err}
+							data.Client.sendResponse(result)
+							return
 						}
 					}
 
@@ -120,85 +108,167 @@ func (h *Hub) run() {
 					game.Players = append(game.Players, *player)
 					log.WithField("GameInfo", game).Info("Player joined")
 
-					data.sendMessage("join ok")
+					info := newInfo("Game joined")
+					info.GameInfo = *game
+					result := Response{Info: *info}
+					data.Client.sendResponse(result)
 
 					h.sendGameStatus(game)
-					break
+					return
 				}
 			}
-			data.Client.sendError(*newErr(GameNotFound, "Invalid Game"))
+		}
+		err := newErr(GameNotFound, "Game not found")
+		result := Response{Error: *err}
+		data.Client.sendResponse(result)
+		return
 
-		case data := <-h.kick:
-			for game := range h.games {
-				if !h.isGameStarted(game) && game.Id == data.GameId {
+	case data := <-h.kick:
+		for game := range h.games {
+			if game.Id == data.GameId {
+				if h.isGameStarted(game) {
+					err := newErr(IncorrectGameState, "Game already started")
+					result := Response{Error: *err}
+					data.Client.sendResponse(result)
+					return
+				} else {
 					for i, player := range game.Players {
 						if player.Nickname == data.Nickname {
 							game.Players = append(game.Players[:i], game.Players[i+1:]...)
 							log.WithField("GameInfo", game).Info("Player kicked")
-							data.sendMessage("kick ok")
-							break selectLoop
-						}
-					}
 
-					h.sendGameStatus(game)
-				}
-			}
-
-		case data := <-h.leave:
-			for game := range h.games {
-				if game.Id == data.GameId {
-					var host = false
-
-					for i, player := range game.Players {
-						if player.Client == data.Client && player.Rank == Host {
-							host = true
-							break
-						}
-
-						// Leave
-						if player.Client == data.Client {
-							game.Players = append(game.Players[:i], game.Players[i+1:]...)
-							log.WithField("GameInfo", game).Info("Player leaved")
-							data.sendMessage("game leave ok")
-							break
-						}
-					}
-
-					// Kick All and destroy game
-					if host {
-						for _, player := range game.Players {
-							player.Client.send <- []byte("game closed ok")
-						}
-						game.Players = nil
-						delete(h.games, game)
-						log.WithField("GameId", data.GameId).Info("Game destroy")
-					}
-				}
-			}
-
-		case data := <-h.start:
-			for game := range h.games {
-				if game.Id == data.GameId && !h.isGameStarted(game) {
-					for _, player := range game.Players {
-						if player.Client == data.Client && player.Rank == Host {
-							game.start(data)
-							data.sendMessage("start ok")
-							log.WithField("GameInfo", game).Info("Game started")
-
+							info := newInfo("Player kicked")
+							info.GameInfo = *game
+							result := Response{Info: *info}
+							data.Client.sendResponse(result)
 							h.sendGameStatus(game)
-							h.games[game] = true
-							break
+							return
 						}
 					}
-				}
-			}
-
-		case data := <-h.play:
-			for game := range h.games {
-				if game.Id == data.GameId && h.isGameStarted(game) {
-					game.play(data)
+					err := newErr(PlayerNotFound, "Player not found")
+					result := Response{Error: *err}
+					data.Client.sendResponse(result)
+					return
 				}
 			}
 		}
+		err := newErr(GameNotFound, "Game not found")
+		result := Response{Error: *err}
+		data.Client.sendResponse(result)
+		return
+
+	case data := <-h.leave:
+		for game := range h.games {
+			if game.Id == data.GameId {
+				host := false
+
+				for i, player := range game.Players {
+					// Leave
+					if player.Client == data.Client {
+						if player.Rank == Host {
+							host = true
+							break
+						} else {
+							game.Players = append(game.Players[:i], game.Players[i+1:]...)
+							log.WithField("GameInfo", game).Info("Player leaved")
+							info := newInfo("Game Leaved")
+							info.GameInfo = *game
+							result := Response{Info: *info}
+							data.Client.sendResponse(result)
+							return
+						}
+					}
+				}
+
+				// Kick All and destroy game
+				if host {
+					for _, player := range game.Players {
+						info := newInfo("Game destroyed")
+						info.GameInfo = *game
+						result := Response{Info: *info}
+						player.Client.sendResponse(result)
+					}
+					game.Players = nil
+					delete(h.games, game)
+					log.WithField("GameId", data.GameId).Info("Game destroyed")
+
+					info := newInfo("Game destroyed")
+					info.GameInfo = *game
+					result := Response{Info: *info}
+					data.Client.sendResponse(result)
+					return
+				}
+			}
+		}
+		err := newErr(GameNotFound, "Game not found")
+		result := Response{Error: *err}
+		data.Client.sendResponse(result)
+		return
+
+	case data := <-h.start:
+		for game := range h.games {
+			if game.Id == data.GameId {
+				if h.isGameStarted(game) {
+					err := newErr(IncorrectGameState, "Game already started")
+					result := Response{Error: *err}
+					data.Client.sendResponse(result)
+					return
+				} else {
+					for _, player := range game.Players {
+						if player.Client == data.Client {
+							if player.Rank != Host {
+								err := newErr(InsufficientPermission, "You are not permitted to start the game")
+								result := Response{Error: *err}
+								data.Client.sendResponse(result)
+								return
+							} else {
+								game.start(data)
+
+								info := newInfo("Game started")
+								info.GameInfo = *game
+								result := Response{Info: *info}
+								data.Client.sendResponse(result)
+
+								log.WithField("GameInfo", game).Info("Game started")
+
+								h.sendGameStatus(game)
+								h.games[game] = true
+								return
+							}
+						}
+					}
+				}
+			}
+		}
+		err := newErr(GameNotFound, "Game not found")
+		result := Response{Error: *err}
+		data.Client.sendResponse(result)
+		return
+
+	case data := <-h.play:
+		for game := range h.games {
+			if game.Id == data.GameId {
+				if !h.isGameStarted(game) {
+					err := newErr(IncorrectGameState, "Game already started")
+					result := Response{Error: *err}
+					data.Client.sendResponse(result)
+					return
+				} else {
+					game.play(data)
+					return
+				}
+			}
+		}
+
+		err := newErr(GameNotFound, "Game not found")
+		result := Response{Error: *err}
+		data.Client.sendResponse(result)
+		return
+	}
+}
+
+func (h *Hub) run() {
+	for {
+		caseLoop(h)
 	}
 }
