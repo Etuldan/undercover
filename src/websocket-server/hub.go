@@ -230,7 +230,6 @@ func caseLoop(h *Hub) {
 								data.Client.sendResponse(result)
 
 								log.WithField("GameInfo", game).Info("Game started")
-
 								h.sendGameStatus(game)
 								h.games[game] = true
 								return
@@ -249,7 +248,7 @@ func caseLoop(h *Hub) {
 		for game := range h.games {
 			if game.Id == data.GameId {
 				if !h.isGameStarted(game) {
-					err := newErr(IncorrectGameState, "Game already started")
+					err := newErr(IncorrectGameState, "Game not started")
 					result := Response{Error: *err}
 					data.Client.sendResponse(result)
 					return
