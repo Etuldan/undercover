@@ -5,18 +5,27 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Action int
+
+const (
+	Nothing Action = iota
+	WriteDown
+	Vote
+)
+
 type Game struct {
-	Id      uuid.UUID `json:"gameId"`
-	Word    string    `json:"-"`
-	Players []Player  `json:"players"`
-	Turn    int       `json:"turn"`
-	Votes   []string  `json:"-"`
+	Id        uuid.UUID `json:"gameId"`
+	Word      string    `json:"-"`
+	Players   []Player  `json:"players"`
+	Turn      int       `json:"turn"`
+	Votes     []string  `json:"-"`
+	Action    Action    `json:"action"`
+	Initiator Player    `json:"initiator"`
 }
 
 type gameData struct {
 	hubData
-	Word string
-	Vote string
+	Command string
 }
 
 func newGame(idGame uuid.UUID) *Game {
@@ -29,15 +38,18 @@ func newGame(idGame uuid.UUID) *Game {
 func (g *Game) play(data *gameData) {
 	// Vote Time !
 	if g.Turn > len(g.Players) {
-		index := -1
 		for i, player := range g.Players {
-			if player.Client == data.Client {
-				index = i
+			if player.Client == data.Client && g.Votes[i] != "" {
+				g.Votes[i] = data.Command
+				info := newInfo(g.Votes[i])
+				info.GameInfo = *g
+				info.GameInfo.Action = Vote
+				info.GameInfo.Initiator = player
+				successResult := Response{Info: *info}
+				player.Client.sendResponse(successResult)
 			}
 		}
-		if index != -1 {
-			g.Votes[index] = data.Vote
-		}
+
 		everyoneVote := true
 		for _, value := range g.Votes {
 			if value == "" {
@@ -64,10 +76,13 @@ func (g *Game) play(data *gameData) {
 	// Write Down word
 	for i, player := range g.Players {
 		if player.Client == data.Client && i == g.Turn {
-			for _, p := range g.Players {
-				p.Client.send <- []byte(data.Word)
-			}
+			info := newInfo(data.Command)
+			info.GameInfo = *g
+			info.GameInfo.Action = WriteDown
+			info.GameInfo.Initiator = player
 			g.Turn++
+			g.handleTurn(*info)
+
 			if g.Turn == len(g.Players)+1 {
 				g.Votes = make([]string, len(g.Players))
 			}
@@ -76,16 +91,31 @@ func (g *Game) play(data *gameData) {
 	}
 }
 
-func (g *Game) start(data *hubData) {
-	g.Word = "a"
+func (g *Game) handleTurn(info InfoResponse) {
+	info.GameInfo.Turn = g.Turn
+	successResult := Response{Info: info}
+	for _, p := range g.Players {
+		p.Client.sendResponse(successResult)
+	}
+}
 
+func (g *Game) start(data *hubData) {
+	for i, _ := range g.Players {
+		g.Players[i].Position = i
+	}
+
+	g.Word = "a"
 	g.Turn = 0
 
-	random1, _ := genRandNum(0, len(g.Players))
-	random2 := random1
-	for random2 == random1 {
-		random2, _ = genRandNum(1, len(g.Players))
-	}
-	g.Players[random1].Role = Undercover
-	g.Players[random2].Role = White
+	randomUnderCover, _ := genRandNum(0, len(g.Players))
+	g.Players[randomUnderCover].Role = Undercover
+	//randomWhite := randomUnderCover
+	//for randomWhite == randomUnderCover {
+	//	randomWhite, _ = genRandNum(1, len(g.Players))
+	//}
+	//g.Players[randomWhite].Role = White
+
+	info := newInfo("")
+	info.GameInfo = *g
+	g.handleTurn(*info)
 }
