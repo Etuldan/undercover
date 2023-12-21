@@ -11,6 +11,7 @@ const (
 	Nothing Action = iota
 	WriteDown
 	Vote
+	Eliminated
 )
 
 type Game struct {
@@ -37,16 +38,24 @@ func newGame(idGame uuid.UUID) *Game {
 
 func (g *Game) play(data *gameData) {
 	// Vote Time !
-	if g.Turn > len(g.Players) {
+	if g.Turn == len(g.Players) {
 		for i, player := range g.Players {
-			if player.Client == data.Client && g.Votes[i] != "" {
-				g.Votes[i] = data.Command
-				info := newInfo(g.Votes[i])
-				info.GameInfo = *g
-				info.GameInfo.Action = Vote
-				info.GameInfo.Initiator = player
-				successResult := Response{Info: *info}
-				player.Client.sendResponse(successResult)
+			if player.Client == data.Client {
+				if g.Votes[i] != "" {
+					err := newErr(NotYourTurn, "You already voted")
+					result := Response{Error: *err}
+					data.Client.sendResponse(result)
+					return
+				} else {
+					log.WithField("GameInfo", g).WithField("Vote", data.Command).Info("New Vote")
+					g.Votes[i] = data.Command
+					info := newInfo(g.Votes[i])
+					info.GameInfo = *g
+					info.GameInfo.Action = Vote
+					info.GameInfo.Initiator = player
+					successResult := Response{Info: *info}
+					player.Client.sendResponse(successResult)
+				}
 			}
 		}
 
@@ -61,38 +70,78 @@ func (g *Game) play(data *gameData) {
 			for _, vote := range g.Votes {
 				dict[vote]++
 			}
+
 			maxValue := 0
 			maxVote := ""
 			for vote, value := range dict {
 				if value > maxValue {
 					maxValue = value
 					maxVote = vote
+				} else if value == maxValue {
+					// TODO Random
 				}
 			}
-			log.WithField("maxVote", maxVote).Info("Vote")
+			log.WithField("GameInfo", g).WithField("Vote", maxVote).WithField("NbVote", maxValue).Info("Vote Result")
+
+			for i, player := range g.Players {
+				if player.Nickname == maxVote {
+					g.Players[i].Eliminated = true
+					if player.Role == White {
+						g.Turn = player.Position
+						log.WithField("GameInfo", g).Info("Mr White last chance")
+						// TODO
+					} else if player.Role == Undercover {
+						log.WithField("GameInfo", g).Info("Undercover eliminated")
+						// TODO
+					} else {
+						log.WithField("GameInfo", g).Info("Civilian eliminated")
+						// TODO
+					}
+				}
+			}
+
+			info := newInfo(maxVote)
+			info.GameInfo = *g
+			info.GameInfo.Action = Eliminated
+			g.Turn = 0
+			g.handleTurn(*info)
+			return
 		}
+
+		return
 	}
 
 	// Write Down word
 	for i, player := range g.Players {
-		if player.Client == data.Client && i == g.Turn {
-			info := newInfo(data.Command)
-			info.GameInfo = *g
-			info.GameInfo.Action = WriteDown
-			info.GameInfo.Initiator = player
-			g.Turn++
-			g.handleTurn(*info)
+		if player.Client == data.Client {
+			if i != g.Turn {
+				err := newErr(NotYourTurn, "Not your turn")
+				result := Response{Error: *err}
+				data.Client.sendResponse(result)
+				return
+			} else {
+				log.WithField("GameInfo", g).WithField("Word", data.Command).Info("Word")
+				info := newInfo(data.Command)
+				info.GameInfo = *g
+				info.GameInfo.Action = WriteDown
+				info.GameInfo.Initiator = player
+				g.Turn++
+				g.handleTurn(*info)
 
-			if g.Turn == len(g.Players)+1 {
-				g.Votes = make([]string, len(g.Players))
+				if g.Turn == len(g.Players) {
+					g.Votes = make([]string, len(g.Players))
+				}
+				return
 			}
-			break
 		}
 	}
+	err := newErr(PlayerNotFound, "Invalid player")
+	result := Response{Error: *err}
+	data.Client.sendResponse(result)
 }
 
 func (g *Game) handleTurn(info InfoResponse) {
-	info.GameInfo.Turn = g.Turn
+	//info.GameInfo.Turn = g.Turn
 	successResult := Response{Info: info}
 	for _, p := range g.Players {
 		p.Client.sendResponse(successResult)
@@ -100,13 +149,17 @@ func (g *Game) handleTurn(info InfoResponse) {
 }
 
 func (g *Game) start(data *hubData) {
+	g.Turn = 0
+
+	// TODO : Randomize order
 	for i, _ := range g.Players {
 		g.Players[i].Position = i
 	}
 
+	// TODO : Randomize word
 	g.Word = "a"
-	g.Turn = 0
 
+	// TODO : Configurable number of Undercover & White
 	randomUnderCover, _ := genRandNum(0, len(g.Players))
 	g.Players[randomUnderCover].Role = Undercover
 	//randomWhite := randomUnderCover
@@ -118,4 +171,5 @@ func (g *Game) start(data *hubData) {
 	info := newInfo("")
 	info.GameInfo = *g
 	g.handleTurn(*info)
+	log.WithField("GameInfo", g).WithField("Undercover", g.Players[randomUnderCover].Nickname).WithField("Word", g.Word).Info("New Game")
 }
