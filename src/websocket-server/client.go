@@ -152,7 +152,6 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			log.WithField("Message", message).Info("incoming message")
 
 			w.Write(message)
 
