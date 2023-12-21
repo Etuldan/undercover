@@ -12,6 +12,7 @@ const (
 	WriteDown
 	Vote
 	Eliminated
+	DisplayWord
 )
 
 type Game struct {
@@ -53,8 +54,8 @@ func (g *Game) play(data *gameData) {
 					info.GameInfo = *g
 					info.GameInfo.Action = Vote
 					info.GameInfo.Initiator = player
-					successResult := Response{Info: *info}
-					player.Client.sendResponse(successResult)
+					result := Response{Info: *info}
+					player.Client.sendResponse(result)
 				}
 			}
 		}
@@ -141,10 +142,9 @@ func (g *Game) play(data *gameData) {
 }
 
 func (g *Game) handleTurn(info InfoResponse) {
-	//info.GameInfo.Turn = g.Turn
-	successResult := Response{Info: info}
+	result := Response{Info: info}
 	for _, p := range g.Players {
-		p.Client.sendResponse(successResult)
+		p.Client.sendResponse(result)
 	}
 }
 
@@ -158,6 +158,7 @@ func (g *Game) start(data *hubData) {
 
 	// TODO : Randomize word
 	g.Word = "a"
+	synonym := "b"
 
 	// TODO : Configurable number of Undercover & White
 	randomUnderCover, _ := genRandNum(0, len(g.Players))
@@ -168,8 +169,30 @@ func (g *Game) start(data *hubData) {
 	//}
 	//g.Players[randomWhite].Role = White
 
+	for _, player := range g.Players {
+		if player.Role == Civilian {
+			info := newInfo(g.Word)
+			info.GameInfo = *g
+			info.GameInfo.Action = DisplayWord
+			result := Response{Info: *info}
+			player.Client.sendResponse(result)
+		} else if player.Role == Undercover {
+			info := newInfo(synonym)
+			info.GameInfo = *g
+			info.GameInfo.Action = DisplayWord
+			result := Response{Info: *info}
+			player.Client.sendResponse(result)
+		} else if player.Role == White {
+			info := newInfo("")
+			info.GameInfo = *g
+			info.GameInfo.Action = DisplayWord
+			result := Response{Info: *info}
+			player.Client.sendResponse(result)
+		}
+	}
+
 	info := newInfo("")
 	info.GameInfo = *g
 	g.handleTurn(*info)
-	log.WithField("GameInfo", g).WithField("Undercover", g.Players[randomUnderCover].Nickname).WithField("Word", g.Word).Info("New Game")
+	log.WithField("GameInfo", g).WithField("Undercover", g.Players[randomUnderCover].Nickname).WithField("Word", g.Word).Info("Game Initiated")
 }
