@@ -10,6 +10,7 @@ const (
 	IncorrectGameState
 	PlayerNotFound
 	InsufficientPermission
+	NotYourTurn
 )
 
 type ErrorResponse struct {
