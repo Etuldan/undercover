@@ -64,10 +64,8 @@ func (c *Client) readPump() {
 
 		command := strings.Split(string(message), " ")
 		if command[0] == "host" {
-			uuid := uuid.New()
 			data := &hubData{
 				Client:   c,
-				GameId:   uuid,
 				Nickname: command[1],
 			}
 			c.hub.create <- data

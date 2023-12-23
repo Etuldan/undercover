@@ -74,6 +74,7 @@ func caseLoop(h *Hub) {
 		}
 
 	case data := <-h.create:
+		data.GameId = uuid.New()
 		game := newGame(data.GameId)
 
 		player := newPlayer(data.Nickname, data.Client)
