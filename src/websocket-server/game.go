@@ -78,15 +78,18 @@ func (g *Game) play(data *gameData) {
 			}
 
 			maxValue := 0
-			maxVote := ""
+			maxVoteSlice := make([]string, 0)
 			for vote, value := range dict {
 				if value > maxValue {
 					maxValue = value
-					maxVote = vote
+					maxVoteSlice = []string{vote}
 				} else if value == maxValue {
-					// TODO Random
+					maxVoteSlice = append(maxVoteSlice, vote)
 				}
 			}
+			r := rand.New(rand.NewSource(time.Now().Unix()))
+			maxVote := maxVoteSlice[r.Intn(len(maxVoteSlice))]
+
 			log.WithField("GameInfo", g).WithField("Vote", maxVote).WithField("NbVote", maxValue).Info("Vote Result")
 
 			for i, player := range g.Players {
@@ -96,7 +99,7 @@ func (g *Game) play(data *gameData) {
 						g.Turn = player.Position
 						g.Action = WhiteGuess
 						log.WithField("GameInfo", g).Info("Mr White last chance")
-						// TODO
+						// TODO WhiteGuess
 					} else if player.Role == Undercover {
 						log.WithField("GameInfo", g).Info("Undercover eliminated")
 						info := newInfo("undercover")
@@ -137,7 +140,7 @@ func (g *Game) play(data *gameData) {
 				data.Client.sendResponse(result)
 				return
 			} else if g.Action == WhiteGuess {
-				// TODO
+				// TODO WhiteGuess
 				log.WithField("GameInfo", g).WithField("Word", data.Command).Info("White Guess")
 				if g.Word == data.Command {
 					log.WithField("GameInfo", g).Info("Game End : White Wins")
@@ -186,7 +189,7 @@ func (g *Game) handleTurn(info InfoResponse) {
 }
 
 func (g *Game) checkEndOfGame() {
-	// TODO
+	// TODO checkEndOfGame
 	countCivilian := 0
 	countUndercover := 0
 	countWhite := 0
@@ -219,11 +222,11 @@ func (g *Game) start(data *hubData) {
 		g.Players[i].Position = j
 	}
 
-	// TODO : Randomize word
+	// TODO Randomize word
 	g.Word = "Word"
 	synonym := "Synonym"
 
-	// TODO : Configurable number of Undercover & White
+	// TODO Configurable number of Undercover & White
 	randomUnderCover := r.Intn(len(g.Players)) // Random from 0 to Max
 	g.Players[randomUnderCover].Role = Undercover
 	randomWhite := randomUnderCover
