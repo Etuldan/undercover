@@ -34,7 +34,7 @@ func main() {
 	log.WithField("config", cfg).Info("Starting Websocket ...")
 
 	flag.Parse()
-	hub := newHub()
+	hub := newHub(cfg)
 	go hub.run()
 
 	http.HandleFunc("/"+cfg.Server.Endpoint, func(w http.ResponseWriter, r *http.Request) {

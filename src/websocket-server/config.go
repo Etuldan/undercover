@@ -11,8 +11,11 @@ type Config struct {
 		ApiKey string `yaml:"apikey"`
 	} `yaml:"seq"`
 	Game struct {
-		nbUndercover int `yaml:"nbUndercover"`
+		NbUndercover int `yaml:"nbUndercover"`
 		NbWhite      int `yaml:"nbWhite"`
 		NbTurn       int `yaml:"nbTurn"`
 	} `yaml:"game"`
+	Debug struct {
+		GameUuid string `yaml:"gameUuid"`
+	} `yaml:"debug"`
 }

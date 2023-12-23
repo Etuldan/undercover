@@ -12,6 +12,7 @@ type hubData struct {
 }
 
 type Hub struct {
+	cfg Config
 	// Registered clients.
 	clients map[*Client]bool
 	games   map[*Game]bool
@@ -27,8 +28,9 @@ type Hub struct {
 	unregister chan *Client
 }
 
-func newHub() *Hub {
+func newHub(config Config) *Hub {
 	return &Hub{
+		cfg:    config,
 		create: make(chan *hubData),
 		join:   make(chan *hubData),
 		start:  make(chan *hubData),
@@ -74,7 +76,11 @@ func caseLoop(h *Hub) {
 		}
 
 	case data := <-h.create:
-		data.GameId = uuid.New()
+		if h.cfg.Debug.GameUuid != "" {
+			data.GameId = uuid.MustParse(h.cfg.Debug.GameUuid)
+		} else {
+			data.GameId = uuid.New()
+		}
 		game := newGame(data.GameId)
 
 		player := newPlayer(data.Nickname, data.Client)

@@ -13,3 +13,6 @@ game:
   nbUndercover: 1
   nbWhite: 1
   nbTurn: 1
+
+debug:
+  gameUuid: "7afab876-160c-49a7-9d20-fdbc1c727b59"
