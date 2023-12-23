@@ -1,6 +1,9 @@
 package main
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -211,23 +214,23 @@ func (g *Game) checkEndOfGame() {
 func (g *Game) start(data *hubData) {
 	g.Turn = 0
 
-	// TODO : Randomize order
-	for i, _ := range g.Players {
-		g.Players[i].Position = i
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	for j, i := range r.Perm(len(g.Players)) {
+		g.Players[i].Position = j
 	}
 
 	// TODO : Randomize word
-	g.Word = "a"
-	synonym := "b"
+	g.Word = "Word"
+	synonym := "Synonym"
 
 	// TODO : Configurable number of Undercover & White
 	randomUnderCover, _ := genRandNum(0, len(g.Players))
 	g.Players[randomUnderCover].Role = Undercover
-	//randomWhite := randomUnderCover
-	//for randomWhite == randomUnderCover {
-	//	randomWhite, _ = genRandNum(1, len(g.Players))
-	//}
-	//g.Players[randomWhite].Role = White
+	randomWhite := randomUnderCover
+	for randomWhite == randomUnderCover {
+		randomWhite, _ = genRandNum(1, len(g.Players))
+	}
+	g.Players[randomWhite].Role = White
 
 	for _, player := range g.Players {
 		if player.Role == Civilian {
@@ -251,8 +254,5 @@ func (g *Game) start(data *hubData) {
 		}
 	}
 
-	info := newInfo("")
-	info.GameInfo = *g
-	g.handleTurn(*info)
 	log.WithField("GameInfo", g).WithField("Undercover", g.Players[randomUnderCover].Nickname).WithField("Word", g.Word).Info("Game Initiated")
 }
