@@ -229,8 +229,6 @@ func caseLoop(h *Hub) {
 								data.Client.sendResponse(result)
 								return
 							} else {
-								game.start(data)
-
 								info := newInfo("Game started")
 								info.GameInfo = *game
 								result := Response{Info: *info}
@@ -239,6 +237,9 @@ func caseLoop(h *Hub) {
 								log.WithField("GameInfo", game).Info("Game started")
 								h.sendGameStatus(game)
 								h.games[game] = true
+
+								game.start(data)
+
 								return
 							}
 						}

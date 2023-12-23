@@ -224,11 +224,11 @@ func (g *Game) start(data *hubData) {
 	synonym := "Synonym"
 
 	// TODO : Configurable number of Undercover & White
-	randomUnderCover, _ := genRandNum(0, len(g.Players))
+	randomUnderCover := r.Intn(len(g.Players)) // Random from 0 to Max
 	g.Players[randomUnderCover].Role = Undercover
 	randomWhite := randomUnderCover
 	for randomWhite == randomUnderCover {
-		randomWhite, _ = genRandNum(1, len(g.Players))
+		randomWhite = r.Intn(len(g.Players)-1) + 1 // Random from 1 to Max
 	}
 	g.Players[randomWhite].Role = White
 
