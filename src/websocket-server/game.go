@@ -18,9 +18,11 @@ const (
 	DisplayWord
 	WhiteGuess
 	Winner
+	Closed
 )
 
 type Game struct {
+	Hub       *Hub      `json:"-"`
 	Id        uuid.UUID `json:"gameId"`
 	Word      string    `json:"-"`
 	Players   []Player  `json:"players"`
@@ -35,8 +37,9 @@ type gameData struct {
 	Command string
 }
 
-func newGame(idGame uuid.UUID) *Game {
+func newGame(idGame uuid.UUID, hub *Hub) *Game {
 	return &Game{
+		Hub:     hub,
 		Id:      idGame,
 		Players: make([]Player, 0),
 	}
@@ -89,7 +92,6 @@ func (g *Game) play(data *gameData) {
 			}
 			r := rand.New(rand.NewSource(time.Now().Unix()))
 			maxVote := maxVoteSlice[r.Intn(len(maxVoteSlice))]
-
 			log.WithField("GameInfo", g).WithField("Vote", maxVote).WithField("NbVote", maxValue).Info("Vote Result")
 
 			for i, player := range g.Players {
@@ -99,7 +101,13 @@ func (g *Game) play(data *gameData) {
 						g.Turn = player.Position
 						g.Action = WhiteGuess
 						log.WithField("GameInfo", g).Info("Mr White last chance")
-						// TODO WhiteGuess
+						info := newInfo("guess")
+						info.GameInfo = *g
+						result := Response{Info: *info}
+						player.Client.sendResponse(result)
+
+						g.handleTurn(*info)
+						return
 					} else if player.Role == Undercover {
 						log.WithField("GameInfo", g).Info("Undercover eliminated")
 						info := newInfo("undercover")
@@ -107,7 +115,9 @@ func (g *Game) play(data *gameData) {
 						info.GameInfo.Action = Eliminated
 						result := Response{Info: *info}
 						player.Client.sendResponse(result)
+
 						g.checkEndOfGame()
+						return
 					} else {
 						log.WithField("GameInfo", g).Info("Civilian eliminated")
 						info := newInfo("civilian")
@@ -115,17 +125,12 @@ func (g *Game) play(data *gameData) {
 						info.GameInfo.Action = Eliminated
 						result := Response{Info: *info}
 						player.Client.sendResponse(result)
+
 						g.checkEndOfGame()
+						return
 					}
 				}
 			}
-
-			info := newInfo(maxVote)
-			info.GameInfo = *g
-			info.GameInfo.Action = Eliminated
-			g.Turn = 0
-			g.handleTurn(*info)
-			return
 		}
 
 		return
@@ -140,7 +145,6 @@ func (g *Game) play(data *gameData) {
 				data.Client.sendResponse(result)
 				return
 			} else if g.Action == WhiteGuess {
-				// TODO WhiteGuess
 				log.WithField("GameInfo", g).WithField("Word", data.Command).Info("White Guess")
 				if g.Word == data.Command {
 					log.WithField("GameInfo", g).Info("Game End : White Wins")
@@ -149,6 +153,9 @@ func (g *Game) play(data *gameData) {
 					info.GameInfo.Action = Winner
 					result := Response{Info: *info}
 					player.Client.sendResponse(result)
+
+					g.Hub.closeGame(g)
+					return
 				} else {
 					log.WithField("GameInfo", g).Info("White Eliminated")
 					info := newInfo("")
@@ -159,6 +166,7 @@ func (g *Game) play(data *gameData) {
 
 					g.Turn = 0
 					g.handleTurn(*info)
+					return
 				}
 			} else {
 				log.WithField("GameInfo", g).WithField("Word", data.Command).Info("Word")
@@ -206,10 +214,14 @@ func (g *Game) checkEndOfGame() {
 	}
 	if countWhite == 0 && countUndercover == 0 {
 		log.WithField("GameInfo", g).Info("Game End : Civilian Wins")
+
+		g.Hub.closeGame(g)
 		// Civilian WIN
 	}
 	if countCivilian == 1 {
 		log.WithField("GameInfo", g).Info("Game End : Undercover & MrWhite Wins")
+
+		g.Hub.closeGame(g)
 		// Undercover & White WIN
 	}
 }

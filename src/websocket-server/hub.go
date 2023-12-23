@@ -58,6 +58,24 @@ func (h *Hub) sendGameStatus(game *Game) {
 	}
 }
 
+func (h *Hub) closeGame(game *Game) {
+	log.WithField("GameInfo", game).Info("Close Game")
+
+	info := newInfo("closed")
+	info.GameInfo = *game
+	info.GameInfo.Action = Closed
+	successResult := Response{Info: *info}
+	for _, player := range game.Players {
+		player.Client.sendResponse(successResult)
+	}
+	game.Players = nil
+	for currGame, _ := range h.games {
+		if currGame.Id == game.Id {
+			delete(h.games, currGame)
+		}
+	}
+}
+
 func caseLoop(h *Hub) {
 	select {
 	case client := <-h.register:
@@ -81,7 +99,7 @@ func caseLoop(h *Hub) {
 		} else {
 			data.GameId = uuid.New()
 		}
-		game := newGame(data.GameId)
+		game := newGame(data.GameId, h)
 
 		player := newPlayer(data.Nickname, data.Client)
 		player.Rank = Host
