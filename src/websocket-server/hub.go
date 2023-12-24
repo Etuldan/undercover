@@ -69,7 +69,7 @@ func (h *Hub) closeGame(game *Game) {
 		player.Client.sendResponse(successResult)
 	}
 	game.Players = nil
-	for currGame, _ := range h.games {
+	for currGame := range h.games {
 		if currGame.Id == game.Id {
 			delete(h.games, currGame)
 		}
