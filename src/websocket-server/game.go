@@ -234,7 +234,8 @@ func (g *Game) start(data *hubData) {
 	path := "../../data/list-commun.csv"
 	file, err := os.Open(path)
 	if err != nil {
-		log.WithError(err).WithField("file", path).Error("Error while opening the file")
+		log.WithError(err).Error("Error while opening the file")
+		g.Hub.closeGame(g)
 		return
 	}
 	defer file.Close()
@@ -242,6 +243,7 @@ func (g *Game) start(data *hubData) {
 	records, err := reader.ReadAll()
 	if err != nil {
 		log.WithError(err).WithField("file", file).Error("Error while reading the file")
+		g.Hub.closeGame(g)
 		return
 	}
 	wordList := map[int][]string{}
@@ -249,27 +251,41 @@ func (g *Game) start(data *hubData) {
 		wordList[i] = []string{eachrecord[0], eachrecord[1]}
 	}
 	randomWord := r.Intn(len(wordList))
-	randomWordOrder := r.Intn(2)
+	randomWordOrder := r.Intn(2) // Random swap left-right
 	g.Word = wordList[randomWord][randomWordOrder]
 	synonym := wordList[randomWord][(randomWordOrder+1)%2]
 	clear(wordList)
 	log.WithField("GameInfo", g).WithField("Word", g.Word).WithField("Synonym", synonym).Info("Word draw")
 
 	g.Turn = 0
+	// Randomize positions
 	for j, i := range r.Perm(len(g.Players)) {
 		g.Players[i].Position = j
 	}
 
-	// TODO Configurable number of Undercover & White
-	randomUnderCover := r.Intn(len(g.Players)) // Random from 0 to Max
-	g.Players[randomUnderCover].Role = Undercover
-	randomWhite := randomUnderCover
-	for randomWhite == randomUnderCover {
-		randomWhite = r.Intn(len(g.Players)-1) + 1 // Random from 1 to Max
+	// TODO max player vs number configurable
+	listExclude := []int{}
+	nbUndercover := g.Hub.cfg.Game.NbUndercover
+	for i := 0; i < nbUndercover; i++ {
+		random := r.Intn(len(g.Players))
+		for checkInList(listExclude, random) {
+			random = r.Intn(len(g.Players))
+		}
+		listExclude = append(listExclude, random)
+		g.Players[random].Role = Undercover
+		log.WithField("GameInfo", g).WithField("Undercover", g.Players[random].Nickname).Info("Undercover draw")
 	}
-	g.Players[randomWhite].Role = White
-	log.WithField("GameInfo", g).WithField("Undercover", g.Players[randomUnderCover].Nickname).Info("Undercover draw")
-	log.WithField("GameInfo", g).WithField("White", g.Players[randomWhite].Nickname).Info("MrWhite draw")
+	nbWhite := g.Hub.cfg.Game.NbWhite
+	for i := 0; i < nbWhite; i++ {
+		random := r.Intn(len(g.Players))
+		for checkInList(listExclude, random) || g.Players[random].Position == 0 {
+			random = r.Intn(len(g.Players))
+		}
+		listExclude = append(listExclude, random)
+		g.Players[random].Role = White
+		log.WithField("GameInfo", g).WithField("White", g.Players[random].Nickname).Info("MrWhite draw")
+	}
+	clear(listExclude)
 
 	for _, player := range g.Players {
 		if player.Role == Civilian {
