@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/csv"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -227,16 +229,36 @@ func (g *Game) checkEndOfGame() {
 }
 
 func (g *Game) start(data *hubData) {
-	g.Turn = 0
-
 	r := rand.New(rand.NewSource(time.Now().Unix()))
+
+	path := "../../data/list-commun.csv"
+	file, err := os.Open(path)
+	if err != nil {
+		log.WithError(err).WithField("file", path).Error("Error while opening the file")
+		return
+	}
+	defer file.Close()
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.WithError(err).WithField("file", file).Error("Error while reading the file")
+		return
+	}
+	wordList := map[int][]string{}
+	for i, eachrecord := range records {
+		wordList[i] = []string{eachrecord[0], eachrecord[1]}
+	}
+	randomWord := r.Intn(len(wordList))
+	randomWordOrder := r.Intn(2)
+	g.Word = wordList[randomWord][randomWordOrder]
+	synonym := wordList[randomWord][(randomWordOrder+1)%2]
+	clear(wordList)
+	log.WithField("GameInfo", g).WithField("Word", g.Word).WithField("Synonym", synonym).Info("Word draw")
+
+	g.Turn = 0
 	for j, i := range r.Perm(len(g.Players)) {
 		g.Players[i].Position = j
 	}
-
-	// TODO Randomize word
-	g.Word = "Word"
-	synonym := "Synonym"
 
 	// TODO Configurable number of Undercover & White
 	randomUnderCover := r.Intn(len(g.Players)) // Random from 0 to Max
@@ -246,6 +268,8 @@ func (g *Game) start(data *hubData) {
 		randomWhite = r.Intn(len(g.Players)-1) + 1 // Random from 1 to Max
 	}
 	g.Players[randomWhite].Role = White
+	log.WithField("GameInfo", g).WithField("Undercover", g.Players[randomUnderCover].Nickname).Info("Undercover draw")
+	log.WithField("GameInfo", g).WithField("White", g.Players[randomWhite].Nickname).Info("MrWhite draw")
 
 	for _, player := range g.Players {
 		if player.Role == Civilian {
@@ -268,6 +292,4 @@ func (g *Game) start(data *hubData) {
 			player.Client.sendResponse(result)
 		}
 	}
-
-	log.WithField("GameInfo", g).WithField("Undercover", g.Players[randomUnderCover].Nickname).WithField("Word", g.Word).Info("Game Initiated")
 }
