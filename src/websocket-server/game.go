@@ -16,6 +16,7 @@ const (
 	Nothing Action = iota
 	WriteDown
 	Vote
+	Voted
 	Eliminated
 	DisplayWord
 	WhiteGuess
@@ -96,6 +97,14 @@ func (g *Game) play(data *gameData) {
 			maxVote := maxVoteSlice[r.Intn(len(maxVoteSlice))]
 			log.WithField("GameInfo", g).WithField("Vote", maxVote).WithField("NbVote", maxValue).Info("Vote Result")
 
+			info := newInfo(maxVote)
+			info.GameInfo = *g
+			info.GameInfo.Action = Voted
+			result := Response{Info: *info}
+			for _, player := range g.Players {
+				player.Client.sendResponse(result)
+			}
+
 			for i, player := range g.Players {
 				if player.Nickname == maxVote {
 					g.Players[i].Eliminated = true
@@ -103,31 +112,26 @@ func (g *Game) play(data *gameData) {
 						g.Turn = player.Position
 						g.Action = WhiteGuess
 						log.WithField("GameInfo", g).Info("Mr White last chance")
-						info := newInfo("guess")
+						info := newInfo("")
 						info.GameInfo = *g
-						result := Response{Info: *info}
-						player.Client.sendResponse(result)
-
 						g.handleTurn(*info)
 						return
 					} else if player.Role == Undercover {
 						log.WithField("GameInfo", g).Info("Undercover eliminated")
+						g.Turn = 0
 						info := newInfo("undercover")
 						info.GameInfo = *g
 						info.GameInfo.Action = Eliminated
-						result := Response{Info: *info}
-						player.Client.sendResponse(result)
-
+						g.handleTurn(*info)
 						g.checkEndOfGame()
 						return
 					} else {
 						log.WithField("GameInfo", g).Info("Civilian eliminated")
+						g.Turn = 0
 						info := newInfo("civilian")
 						info.GameInfo = *g
 						info.GameInfo.Action = Eliminated
-						result := Response{Info: *info}
-						player.Client.sendResponse(result)
-
+						g.handleTurn(*info)
 						g.checkEndOfGame()
 						return
 					}
