@@ -25,14 +25,14 @@ const (
 )
 
 type Game struct {
-	Hub       *Hub      `json:"-"`
-	Id        uuid.UUID `json:"gameId"`
-	Word      string    `json:"-"`
-	Players   []Player  `json:"players"`
-	Turn      int       `json:"turn"`
-	Votes     []string  `json:"-"`
-	Action    Action    `json:"action"`
-	Initiator Player    `json:"initiator"`
+	Hub     *Hub       `json:"-"`
+	Id      uuid.UUID  `json:"gameId"`
+	Word    string     `json:"-"`
+	Players []Player   `json:"players"`
+	Turn    int        `json:"turn"`
+	Votes   []string   `json:"-"`
+	logger  *log.Entry `json:"-"`
+	Action  Action     `json:"action"`
 }
 
 type gameData struct {
@@ -45,27 +45,28 @@ func newGame(idGame uuid.UUID, hub *Hub) *Game {
 		Hub:     hub,
 		Id:      idGame,
 		Players: make([]Player, 0),
+		logger:  log.WithField("gameId", idGame),
 	}
 }
 
 func (g *Game) play(data *gameData) {
+	logger := g.logger.WithField("GameInfo", g)
 	// Vote Time !
 	if g.Turn == len(g.Players) {
 		for i, player := range g.Players {
 			if player.Client == data.Client {
 				if g.Votes[i] != "" {
 					err := newErr(NotYourTurn, "You already voted")
-					result := Response{Error: *err}
+					result := Response{Error: *err, GameInfo: *g}
 					data.Client.sendResponse(result)
 					return
 				} else {
-					log.WithField("GameInfo", g).WithField("Vote", data.Command).Info("New Vote")
+					logger.WithField("Vote", data.Command).Info("New Vote")
 					g.Votes[i] = data.Command
 					info := newInfo(g.Votes[i])
-					info.GameInfo = *g
-					info.GameInfo.Action = Vote
-					info.GameInfo.Initiator = player
-					result := Response{Info: *info}
+					info.Action = Vote
+					info.Initiator = player
+					result := Response{Info: *info, GameInfo: *g}
 					player.Client.sendResponse(result)
 				}
 			}
@@ -95,12 +96,11 @@ func (g *Game) play(data *gameData) {
 			}
 			r := rand.New(rand.NewSource(time.Now().Unix()))
 			maxVote := maxVoteSlice[r.Intn(len(maxVoteSlice))]
-			log.WithField("GameInfo", g).WithField("Vote", maxVote).WithField("NbVote", maxValue).Info("Vote Result")
+			logger.WithField("Vote", maxVote).WithField("NbVote", maxValue).Info("Vote Result")
 
 			info := newInfo(maxVote)
-			info.GameInfo = *g
-			info.GameInfo.Action = Voted
-			result := Response{Info: *info}
+			info.Action = Voted
+			result := Response{Info: *info, GameInfo: *g}
 			for _, player := range g.Players {
 				player.Client.sendResponse(result)
 			}
@@ -111,26 +111,24 @@ func (g *Game) play(data *gameData) {
 					if player.Role == White {
 						g.Turn = player.Position
 						g.Action = WhiteGuess
-						log.WithField("GameInfo", g).Info("Mr White last chance")
+						info.Action = WhiteGuess
+						logger.Info("Mr White last chance")
 						info := newInfo("")
-						info.GameInfo = *g
 						g.handleTurn(*info)
 						return
 					} else if player.Role == Undercover {
-						log.WithField("GameInfo", g).Info("Undercover eliminated")
+						logger.Info("Undercover eliminated")
 						g.Turn = 0
 						info := newInfo("undercover")
-						info.GameInfo = *g
-						info.GameInfo.Action = Eliminated
+						info.Action = Eliminated
 						g.handleTurn(*info)
 						g.checkEndOfGame()
 						return
 					} else {
-						log.WithField("GameInfo", g).Info("Civilian eliminated")
+						logger.Info("Civilian eliminated")
 						g.Turn = 0
 						info := newInfo("civilian")
-						info.GameInfo = *g
-						info.GameInfo.Action = Eliminated
+						info.Action = Eliminated
 						g.handleTurn(*info)
 						g.checkEndOfGame()
 						return
@@ -147,37 +145,34 @@ func (g *Game) play(data *gameData) {
 		if player.Client == data.Client {
 			if player.Position != g.Turn {
 				err := newErr(NotYourTurn, "Not your turn")
-				result := Response{Error: *err}
+				result := Response{Error: *err, GameInfo: *g}
 				data.Client.sendResponse(result)
 				return
 			} else if g.Action == WhiteGuess {
-				log.WithField("GameInfo", g).WithField("Word", data.Command).Info("White Guess")
+				logger.WithField("Word", data.Command).Info("White Guess")
 				if g.Word == data.Command {
-					log.WithField("GameInfo", g).Info("Game End : White Wins")
+					logger.Info("Game End : White Wins")
 					info := newInfo(g.Word)
-					info.GameInfo = *g
-					info.GameInfo.Action = Winner
-					result := Response{Info: *info}
+					info.Action = Winner
+					result := Response{Info: *info, GameInfo: *g}
 					player.Client.sendResponse(result)
 					g.Hub.closeGame(g)
 					return
 				} else {
-					log.WithField("GameInfo", g).Info("White Eliminated")
+					logger.Info("White Eliminated")
 					info := newInfo("")
-					info.GameInfo = *g
-					info.GameInfo.Action = Eliminated
-					result := Response{Info: *info}
+					info.Action = Eliminated
+					result := Response{Info: *info, GameInfo: *g}
 					player.Client.sendResponse(result)
 					g.Turn = 0
 					g.handleTurn(*info)
 					return
 				}
 			} else {
-				log.WithField("GameInfo", g).WithField("Word", data.Command).Info("Word")
+				logger.WithField("Word", data.Command).Info("Word")
 				info := newInfo(data.Command)
-				info.GameInfo = *g
-				info.GameInfo.Action = WriteDown
-				info.GameInfo.Initiator = player
+				info.Action = WriteDown
+				info.Initiator = player
 				g.Turn++
 				g.handleTurn(*info)
 
@@ -189,12 +184,12 @@ func (g *Game) play(data *gameData) {
 		}
 	}
 	err := newErr(PlayerNotFound, "Invalid player")
-	result := Response{Error: *err}
+	result := Response{Error: *err, GameInfo: *g}
 	data.Client.sendResponse(result)
 }
 
 func (g *Game) handleTurn(info InfoResponse) {
-	result := Response{Info: info}
+	result := Response{Info: info, GameInfo: *g}
 	for _, p := range g.Players {
 		p.Client.sendResponse(result)
 	}
@@ -218,25 +213,27 @@ func (g *Game) checkEndOfGame() {
 	}
 	if countWhite == 0 && countUndercover == 0 {
 		// Civilian WIN
-		log.WithField("GameInfo", g).Info("Game End : Civilian Wins")
+		g.logger.WithField("GameInfo", g).Info("Game End : Civilian Wins")
 
 		g.Hub.closeGame(g)
 	}
 	if countCivilian == 1 {
 		// Undercover & White WIN
-		log.WithField("GameInfo", g).Info("Game End : Undercover & MrWhite Wins")
+		g.logger.WithField("GameInfo", g).Info("Game End : Undercover & MrWhite Wins")
 
 		g.Hub.closeGame(g)
 	}
 }
 
 func (g *Game) start(data *hubData) {
+	logger := g.logger.WithField("GameInfo", g)
+
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 
 	path := "../../data/list-commun.csv"
 	file, err := os.Open(path)
 	if err != nil {
-		log.WithError(err).Error("Error while opening the file")
+		logger.WithError(err).Error("Error while opening the file")
 		g.Hub.closeGame(g)
 		return
 	}
@@ -244,7 +241,7 @@ func (g *Game) start(data *hubData) {
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()
 	if err != nil {
-		log.WithError(err).WithField("file", file).Error("Error while reading the file")
+		logger.WithError(err).WithField("file", file).Error("Error while reading the file")
 		g.Hub.closeGame(g)
 		return
 	}
@@ -257,7 +254,7 @@ func (g *Game) start(data *hubData) {
 	g.Word = wordList[randomWord][randomWordOrder]
 	synonym := wordList[randomWord][(randomWordOrder+1)%2]
 	clear(wordList)
-	log.WithField("GameInfo", g).WithField("Word", g.Word).WithField("Synonym", synonym).Info("Word draw")
+	logger.WithField("Word", g.Word).WithField("Synonym", synonym).Info("Word draw")
 
 	g.Turn = 0
 	// Randomize positions
@@ -275,7 +272,7 @@ func (g *Game) start(data *hubData) {
 		}
 		listExclude = append(listExclude, random)
 		g.Players[random].Role = Undercover
-		log.WithField("GameInfo", g).WithField("Undercover", g.Players[random].Nickname).Info("Undercover draw")
+		logger.WithField("Undercover", g.Players[random].Nickname).Info("Undercover draw")
 	}
 	nbWhite := g.Hub.cfg.Game.NbWhite
 	for i := 0; i < nbWhite; i++ {
@@ -285,28 +282,25 @@ func (g *Game) start(data *hubData) {
 		}
 		listExclude = append(listExclude, random)
 		g.Players[random].Role = White
-		log.WithField("GameInfo", g).WithField("White", g.Players[random].Nickname).Info("MrWhite draw")
+		logger.WithField("White", g.Players[random].Nickname).Info("MrWhite draw")
 	}
 	clear(listExclude)
 
 	for _, player := range g.Players {
 		if player.Role == Civilian {
 			info := newInfo(g.Word)
-			info.GameInfo = *g
-			info.GameInfo.Action = DisplayWord
-			result := Response{Info: *info}
+			info.Action = DisplayWord
+			result := Response{Info: *info, GameInfo: *g}
 			player.Client.sendResponse(result)
 		} else if player.Role == Undercover {
 			info := newInfo(synonym)
-			info.GameInfo = *g
-			info.GameInfo.Action = DisplayWord
-			result := Response{Info: *info}
+			info.Action = DisplayWord
+			result := Response{Info: *info, GameInfo: *g}
 			player.Client.sendResponse(result)
 		} else if player.Role == White {
 			info := newInfo("")
-			info.GameInfo = *g
-			info.GameInfo.Action = DisplayWord
-			result := Response{Info: *info}
+			info.Action = DisplayWord
+			result := Response{Info: *info, GameInfo: *g}
 			player.Client.sendResponse(result)
 		}
 	}

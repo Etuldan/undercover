@@ -1,8 +1,9 @@
 package main
 
 type InfoResponse struct {
-	Message  string `json:"message"`
-	GameInfo Game   `json:"gameInfo"`
+	Message   string `json:"message"`
+	Action    Action `json:"action"`
+	Initiator Player `json:"initiator"`
 }
 
 func newInfo(message string) *InfoResponse {

@@ -53,8 +53,7 @@ func (h *Hub) isGameStarted(game *Game) bool {
 
 func (h *Hub) sendGameStatus(game *Game) {
 	info := newInfo("status")
-	info.GameInfo = *game
-	successResult := Response{Info: *info}
+	successResult := Response{Info: *info, GameInfo: *game}
 	for _, player := range game.Players {
 		player.Client.sendResponse(successResult)
 	}
@@ -64,9 +63,8 @@ func (h *Hub) closeGame(game *Game) {
 	log.WithField("GameInfo", game).Info("Close Game")
 
 	info := newInfo("closed")
-	info.GameInfo = *game
-	info.GameInfo.Action = Closed
-	successResult := Response{Info: *info}
+	info.Action = Closed
+	successResult := Response{Info: *info, GameInfo: *game}
 	for _, player := range game.Players {
 		player.Client.sendResponse(successResult)
 	}
@@ -109,8 +107,7 @@ func caseLoop(h *Hub) {
 		h.games[game] = false
 		log.WithField("GameInfo", game).Info("Game created")
 		info := newInfo("Game created")
-		info.GameInfo = *game
-		result := Response{Info: *info}
+		result := Response{Info: *info, GameInfo: *game}
 		data.Client.sendResponse(result)
 
 	case data := <-h.join:
@@ -118,14 +115,14 @@ func caseLoop(h *Hub) {
 			if game.Id == data.GameId {
 				if h.isGameStarted(game) {
 					err := newErr(IncorrectGameState, "Game already started")
-					result := Response{Error: *err}
+					result := Response{Error: *err, GameInfo: *game}
 					data.Client.sendResponse(result)
 					return
 				} else {
 					for _, player := range game.Players {
 						if player.Nickname == data.Nickname {
 							err := newErr(NicknameNotAvailable, "Nickname already taken")
-							result := Response{Error: *err}
+							result := Response{Error: *err, GameInfo: *game}
 							data.Client.sendResponse(result)
 							return
 						}
@@ -136,8 +133,7 @@ func caseLoop(h *Hub) {
 					log.WithField("GameInfo", game).Info("Player joined")
 
 					info := newInfo("Game joined")
-					info.GameInfo = *game
-					result := Response{Info: *info}
+					result := Response{Info: *info, GameInfo: *game}
 					data.Client.sendResponse(result)
 
 					h.sendGameStatus(game)
@@ -155,7 +151,7 @@ func caseLoop(h *Hub) {
 			if game.Id == data.GameId {
 				if h.isGameStarted(game) {
 					err := newErr(IncorrectGameState, "Game already started")
-					result := Response{Error: *err}
+					result := Response{Error: *err, GameInfo: *game}
 					data.Client.sendResponse(result)
 					return
 				} else {
@@ -165,15 +161,14 @@ func caseLoop(h *Hub) {
 							log.WithField("GameInfo", game).Info("Player kicked")
 
 							info := newInfo("Player kicked")
-							info.GameInfo = *game
-							result := Response{Info: *info}
+							result := Response{Info: *info, GameInfo: *game}
 							data.Client.sendResponse(result)
 							h.sendGameStatus(game)
 							return
 						}
 					}
 					err := newErr(PlayerNotFound, "Player not found")
-					result := Response{Error: *err}
+					result := Response{Error: *err, GameInfo: *game}
 					data.Client.sendResponse(result)
 					return
 				}
@@ -199,8 +194,7 @@ func caseLoop(h *Hub) {
 							game.Players = append(game.Players[:i], game.Players[i+1:]...)
 							log.WithField("GameInfo", game).Info("Player leaved")
 							info := newInfo("Game Leaved")
-							info.GameInfo = *game
-							result := Response{Info: *info}
+							result := Response{Info: *info, GameInfo: *game}
 							data.Client.sendResponse(result)
 							return
 						}
@@ -211,8 +205,7 @@ func caseLoop(h *Hub) {
 				if host {
 					for _, player := range game.Players {
 						info := newInfo("Game destroyed")
-						info.GameInfo = *game
-						result := Response{Info: *info}
+						result := Response{Info: *info, GameInfo: *game}
 						player.Client.sendResponse(result)
 					}
 					game.Players = nil
@@ -220,8 +213,7 @@ func caseLoop(h *Hub) {
 					log.WithField("GameId", data.GameId).Info("Game destroyed")
 
 					info := newInfo("Game destroyed")
-					info.GameInfo = *game
-					result := Response{Info: *info}
+					result := Response{Info: *info, GameInfo: *game}
 					data.Client.sendResponse(result)
 					return
 				}
@@ -237,7 +229,7 @@ func caseLoop(h *Hub) {
 			if game.Id == data.GameId {
 				if h.isGameStarted(game) {
 					err := newErr(IncorrectGameState, "Game already started")
-					result := Response{Error: *err}
+					result := Response{Error: *err, GameInfo: *game}
 					data.Client.sendResponse(result)
 					return
 				} else {
@@ -245,13 +237,12 @@ func caseLoop(h *Hub) {
 						if player.Client == data.Client {
 							if player.Rank != Host {
 								err := newErr(InsufficientPermission, "You are not permitted to start the game")
-								result := Response{Error: *err}
+								result := Response{Error: *err, GameInfo: *game}
 								data.Client.sendResponse(result)
 								return
 							} else {
 								info := newInfo("Game started")
-								info.GameInfo = *game
-								result := Response{Info: *info}
+								result := Response{Info: *info, GameInfo: *game}
 								data.Client.sendResponse(result)
 
 								log.WithField("GameInfo", game).Info("Game started")
@@ -277,7 +268,7 @@ func caseLoop(h *Hub) {
 			if game.Id == data.GameId {
 				if !h.isGameStarted(game) {
 					err := newErr(IncorrectGameState, "Game not started")
-					result := Response{Error: *err}
+					result := Response{Error: *err, GameInfo: *game}
 					data.Client.sendResponse(result)
 					return
 				} else {

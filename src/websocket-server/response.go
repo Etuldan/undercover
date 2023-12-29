@@ -5,8 +5,9 @@ import (
 )
 
 type Response struct {
-	Error ErrorResponse `json:"error"`
-	Info  InfoResponse  `json:"info"`
+	Error    ErrorResponse `json:"error"`
+	Info     InfoResponse  `json:"info"`
+	GameInfo Game          `json:"gameInfo"`
 }
 
 func (client *Client) sendResponse(response Response) {
