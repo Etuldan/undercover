@@ -22,6 +22,7 @@ type Hub struct {
 	start  chan *hubData
 	kick   chan *hubData
 	leave  chan *hubData
+	status chan *hubData
 	play   chan *gameData
 
 	register   chan *Client
@@ -36,6 +37,7 @@ func newHub(config Config) *Hub {
 		start:  make(chan *hubData),
 		kick:   make(chan *hubData),
 		leave:  make(chan *hubData),
+		status: make(chan *hubData),
 		play:   make(chan *gameData),
 
 		register:   make(chan *Client),
@@ -284,7 +286,27 @@ func caseLoop(h *Hub) {
 				}
 			}
 		}
+		err := newErr(GameNotFound, "Game not found")
+		result := Response{Error: *err}
+		data.Client.sendResponse(result)
+		return
 
+	case data := <-h.status:
+		for game := range h.games {
+			if game.Id == data.GameId {
+				if !h.isGameStarted(game) {
+					err := newErr(IncorrectGameState, "Game not started")
+					result := Response{Error: *err, GameInfo: *game}
+					data.Client.sendResponse(result)
+					return
+				} else {
+					info := newInfo("")
+					result := Response{Info: *info, GameInfo: *game}
+					data.Client.sendResponse(result)
+					return
+				}
+			}
+		}
 		err := newErr(GameNotFound, "Game not found")
 		result := Response{Error: *err}
 		data.Client.sendResponse(result)

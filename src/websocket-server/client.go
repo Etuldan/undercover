@@ -127,6 +127,16 @@ func (c *Client) readPump() {
 			c.hub.leave <- socketData
 			continue
 		}
+		if command[0] == "status" {
+			gameUuid, _ := uuid.Parse(command[1])
+			socketData := &hubData{
+				Client: c,
+				GameId: gameUuid,
+			}
+
+			c.hub.status <- socketData
+			continue
+		}
 	}
 }
 
