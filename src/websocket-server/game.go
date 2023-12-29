@@ -139,9 +139,9 @@ func (g *Game) play(data *gameData) {
 	}
 
 	// Write Down word
-	for i, player := range g.Players {
+	for _, player := range g.Players {
 		if player.Client == data.Client {
-			if i != g.Turn {
+			if player.Position != g.Turn {
 				err := newErr(NotYourTurn, "Not your turn")
 				result := Response{Error: *err}
 				data.Client.sendResponse(result)
