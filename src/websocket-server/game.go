@@ -155,7 +155,6 @@ func (g *Game) play(data *gameData) {
 					info.GameInfo.Action = Winner
 					result := Response{Info: *info}
 					player.Client.sendResponse(result)
-
 					g.Hub.closeGame(g)
 					return
 				} else {
@@ -165,7 +164,6 @@ func (g *Game) play(data *gameData) {
 					info.GameInfo.Action = Eliminated
 					result := Response{Info: *info}
 					player.Client.sendResponse(result)
-
 					g.Turn = 0
 					g.handleTurn(*info)
 					return
@@ -215,16 +213,16 @@ func (g *Game) checkEndOfGame() {
 		}
 	}
 	if countWhite == 0 && countUndercover == 0 {
+		// Civilian WIN
 		log.WithField("GameInfo", g).Info("Game End : Civilian Wins")
 
 		g.Hub.closeGame(g)
-		// Civilian WIN
 	}
 	if countCivilian == 1 {
+		// Undercover & White WIN
 		log.WithField("GameInfo", g).Info("Game End : Undercover & MrWhite Wins")
 
 		g.Hub.closeGame(g)
-		// Undercover & White WIN
 	}
 }
 
