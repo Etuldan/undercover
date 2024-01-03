@@ -17,5 +17,14 @@ services:
       - "5341:5341"
     networks:
       - seqnetwork
+  undercover:
+    image: undercover:latest
+    environment:
+      - SEQ_URL=http://seq:5341
+      - SEQ_APIKEY=DEADBEEFrcQ0tbaiKCUD
+    ports:
+      - "8080:8080"
+    networks:
+      - seqnetwork
 networks:
   seqnetwork:

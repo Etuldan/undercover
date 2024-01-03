@@ -1,0 +1,15 @@
+# Server configurations
+server:
+  host: ""
+  port: 8080
+  endpoint: "ws"
+
+# Seq credentials
+seq:
+  url: "SEQ_URL"
+  apikey: "SEQ_APIKEY"
+
+game:
+  nbUndercover: 1
+  nbWhite: 1
+  nbTurn: 1
