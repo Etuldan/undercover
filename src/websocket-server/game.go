@@ -230,7 +230,7 @@ func (g *Game) start(data *hubData) {
 
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 
-	path := "../../data/list-commun.csv"
+	path := "./data/list-words.csv"
 	file, err := os.Open(path)
 	if err != nil {
 		logger.WithError(err).Error("Error while opening the file")
