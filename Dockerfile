@@ -10,17 +10,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /undercover-server
 
 # --
 FROM alpine
+ENV SEQ_URL http://localhost:5341
+ENV SEQ_APIKEY CHANGEME
 WORKDIR /app
 COPY --from=builder /undercover-server /undercover-server
-
-COPY config-docker.yml /app/config.yml
-ENV SEQ_URL http://localhost:5341
-RUN sed -i -e "s|SEQ_URL|${SEQ_URL}|g" /app/config.yml
-ENV SEQ_APIKEY CHANGEME
-RUN sed -i -e "s|SEQ_APIKEY|${SEQ_APIKEY}|g" /app/config.yml
-
-
+COPY config-docker.yml /app/config/config.yml
 COPY src/websocket-server/data/list-words.csv /app/data/list-words.csv
+
+COPY docker-entrypoint.sh /usr/bin/
+RUN ["chmod", "+x", "/usr/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 8080
 CMD ["/undercover-server"]
