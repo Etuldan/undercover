@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("config.yml")
+	f, err := os.Open("config/config.yml")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
