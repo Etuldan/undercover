@@ -102,7 +102,7 @@ func caseLoop(h *Hub) {
 		game := newGame(data.GameId, h)
 
 		player := newPlayer(data.Nickname, data.Client)
-		player.Rank = Host
+		player.Rank = HostRank
 		game.Players = append(game.Players, *player)
 		h.games[game] = false
 		log.WithField("GameInfo", game).Info("Game created")
@@ -187,7 +187,7 @@ func caseLoop(h *Hub) {
 				for i, player := range game.Players {
 					// Leave
 					if player.Client == data.Client {
-						if player.Rank == Host {
+						if player.Rank == HostRank {
 							host = true
 							break
 						} else {
@@ -235,7 +235,7 @@ func caseLoop(h *Hub) {
 				} else {
 					for _, player := range game.Players {
 						if player.Client == data.Client {
-							if player.Rank != Host {
+							if player.Rank != HostRank {
 								err := newErr(InsufficientPermission, "You are not permitted to start the game")
 								result := Response{Error: *err, GameInfo: *game}
 								data.Client.sendResponse(result)

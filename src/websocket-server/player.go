@@ -4,8 +4,8 @@ type Rank int
 
 const (
 	NoRank Rank = iota
-	Host
-	Guest
+	HostRank
+	GuestRank
 )
 
 type Player struct {
@@ -29,7 +29,7 @@ const (
 func newPlayer(nickname string, client *Client) *Player {
 	return &Player{
 		Nickname:   nickname,
-		Rank:       Guest,
+		Rank:       GuestRank,
 		Client:     client,
 		Role:       Civilian,
 		Eliminated: false,
