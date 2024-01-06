@@ -3,7 +3,8 @@ package main
 type Rank int
 
 const (
-	Host Rank = iota
+	NoRank Rank = iota
+	Host
 	Guest
 )
 
@@ -19,7 +20,8 @@ type Player struct {
 type Role int
 
 const (
-	Undercover Role = iota
+	NoRole Role = iota
+	Undercover
 	White
 	Civilian
 )
