@@ -1,23 +1,20 @@
-# Undercover
+# How to build
 
-## How to build
-
-### Manual
+## Manual
 Move to src/websocket-server directory 
 - `go mod download`
 - `go build`
 
-### Using Docker
+## Using Docker
 `docker build -t undercover-server .`
 
-## Client communication with the Server
+# Client communication with the Server
 Each response from the server is in json format.
 The server should respond to every command, and should them message to each client when a game state changed.
 
-### Models
-#### Command
-##### Message
-##### Enums
+## Command
+### Message
+### Enums
 - CommandCode
 
 | Code | Value |
@@ -30,8 +27,8 @@ The server should respond to every command, and should them message to each clie
 | Leave | leave |
 | Status | status |
 
-#### Response
-##### Message
+## Response
+### Message
 ```json
 {
    "error":{
@@ -64,7 +61,7 @@ The server should respond to every command, and should them message to each clie
 | gameTurn | integer | Determine the current player to play. See playerPosition |
 | gameAction | integer | If non 0, see enum Action |
 
-##### Player
+### Player
 ```json
 {
    "nickname": playerNickname,
@@ -81,7 +78,7 @@ The server should respond to every command, and should them message to each clie
 | playerPosition | integer | Position, as order to play, of the Player |
 | playerEliminated | boolean | Boolean to describe is the Player is eliminated |
 
-##### Enums
+### Enums
 - Error
 
 | Code | Value |
