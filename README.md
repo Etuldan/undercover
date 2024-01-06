@@ -29,19 +29,14 @@ TODO
    "info":{
       "message":infoMessage,
       "action": actionCode,
-      "initiator": playerObject {
-         "nickname":initatorNickname,
-         "rank":initatorRank,
-         "position":initiatorPosition,
-         "eliminated": initiatorEliminated
-      }
+      "initiator": playerObject
    },
    "gameInfo":{
       "gameId":gameGuid,
       "players": playerArrayObject,
       "turn": gameTurn,
       "action":gameAction
-   }
+   },
 }
 ```
 | Variable | Type | Meaning |
