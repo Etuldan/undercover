@@ -13,7 +13,7 @@ import (
 type Action int
 
 const (
-	Nothing Action = iota
+	NoAction Action = iota
 	WriteDown
 	Vote
 	Voted
@@ -24,6 +24,13 @@ const (
 	Closed
 )
 
+type GameAction int
+
+const (
+	NoGameAction GameAction = iota
+	MrWhiteGuessAttempt
+)
+
 type Game struct {
 	Hub     *Hub       `json:"-"`
 	Id      uuid.UUID  `json:"gameId"`
@@ -32,7 +39,7 @@ type Game struct {
 	Turn    int        `json:"turn"`
 	Votes   []string   `json:"-"`
 	logger  *log.Entry `json:"-"`
-	Action  Action     `json:"action"`
+	Action  GameAction `json:"action"`
 }
 
 type gameData struct {
@@ -110,7 +117,7 @@ func (g *Game) play(data *gameData) {
 					g.Players[i].Eliminated = true
 					if player.Role == White {
 						g.Turn = player.Position
-						g.Action = WhiteGuess
+						g.Action = MrWhiteGuessAttempt
 						info.Action = WhiteGuess
 						logger.Info("Mr White last chance")
 						info := newInfo("")
@@ -148,8 +155,9 @@ func (g *Game) play(data *gameData) {
 				result := Response{Error: *err, GameInfo: *g}
 				data.Client.sendResponse(result)
 				return
-			} else if g.Action == WhiteGuess {
+			} else if g.Action == MrWhiteGuessAttempt {
 				logger.WithField("Word", data.Command).Info("White Guess")
+				g.Action = NoGameAction
 				if g.Word == data.Command {
 					logger.Info("Game End : White Wins")
 					info := newInfo(g.Word)
