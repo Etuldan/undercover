@@ -39,6 +39,7 @@ TODO
    },
 }
 ```
+
 | Variable | Type | Meaning |
 -----------------------------
 | errorCode | integer | If non 0, an error occurred. See enum Error |
@@ -60,6 +61,7 @@ TODO
    "eliminated": playerEliminated
 }
 ```
+
 | Variable | Type | Meaning |
 -----------------------------
 | playerNickname | string | Nickname of a player |
