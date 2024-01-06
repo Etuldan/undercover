@@ -41,7 +41,7 @@ TODO
 ```
 
 | Variable | Type | Meaning |
------------------------------
+|---|---|---|
 | errorCode | integer | If non 0, an error occurred. See enum Error |
 | errorMessage | string | Human readable error message, in case of error |
 | infoMessage | string | Human readable info message |
@@ -63,7 +63,7 @@ TODO
 ```
 
 | Variable | Type | Meaning |
------------------------------
+|---|---|---|
 | playerNickname | string | Nickname of a player |
 | playerRank | integer | Rank of the Player, see enum Rank |
 | playerPosition | integer | Position, as order to play, of the Player |
