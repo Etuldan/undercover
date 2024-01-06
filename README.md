@@ -16,7 +16,19 @@ The server should respond to every command, and should them message to each clie
 
 ### Models
 #### Command
-TODO
+##### Message
+##### Enums
+- CommandCode
+
+| Code | Value |
+|---|---|
+| Host | host |
+| Start | start |
+| Join | join |
+| Kick | kick |
+| Play | play |
+| Leave | leave |
+| Status | status |
 
 #### Response
 ##### Message
@@ -24,18 +36,18 @@ TODO
 {
    "error":{
       "code": errorCode,
-      "message":errorMessage
+      "message": errorMessage
    },
    "info":{
-      "message":infoMessage,
+      "message": infoMessage,
       "action": actionCode,
       "initiator": playerObject
    },
    "gameInfo":{
-      "gameId":gameGuid,
+      "gameId": gameGuid,
       "players": playerArrayObject,
       "turn": gameTurn,
-      "action":gameAction
+      "action": gameAction
    },
 }
 ```
@@ -55,9 +67,9 @@ TODO
 ##### Player
 ```json
 {
-   "nickname":playerNickname,
-   "rank":playerRank,
-   "position":playerPosition,
+   "nickname": playerNickname,
+   "rank": playerRank,
+   "position": playerPosition,
    "eliminated": playerEliminated
 }
 ```
@@ -71,37 +83,52 @@ TODO
 
 ##### Enums
 - Error
-NoError
-GameNotFound
-GameNotAvailable
-NicknameNotAvailable
-IncorrectGameState
-PlayerNotFound
-InsufficientPermission
-NotYourTurn
+
+| Code | Value |
+|---|---|
+| NoError | 0 |
+| GameNotFound | 1 |
+| GameNotAvailable | 2 |
+| NicknameNotAvailable | 3 |
+| IncorrectGameState | 4 |
+| PlayerNotFound | 5 |
+| InsufficientPermission | 6 |
+| NotYourTurn | 7 |
 
 - Action
-NoAction
-WriteDown
-Vote
-Voted
-Eliminated
-DisplayWord
-WhiteGuess
-Winner
-Closed
+
+| Code | Value |
+|---|---|
+| NoAction | 0 |
+| WriteDown | 1 |
+| Vote | 2 |
+| Voted | 3 |
+| Eliminated | 4 |
+| DisplayWord | 5 |
+| WhiteGuess | 6 |
+| Winner | 7 |
+| Closed | 8 |
 
 - GameAction
-NoGameAction
-MrWhiteGuessAttempt
+
+| Code | Value |
+|---|---|
+| NoGameAction | 0 |
+| MrWhiteGuessAttempt | 1 |
 
 - Rank
-NoRank
-Host
-Guest
+
+| Code | Value |
+|---|---|
+| NoRank | 0 |
+| Host | 1 |
+| Guest | 2 |
 
 - Role
-NoRole
-Undercover
-White
-Civilian
+
+| Code | Value |
+|---|---|
+| NoRole | 0 |
+| Undercover | 1 |
+| White | 2 |
+| Civilian | 3 |
