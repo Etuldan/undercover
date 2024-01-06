@@ -2,11 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
@@ -56,86 +55,66 @@ func (c *Client) readPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.WithError(err)
 			}
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-
-		command := strings.Split(string(message), " ")
-		if command[0] == "host" {
+		var messageJson Command
+		err = json.Unmarshal([]byte(message), &messageJson)
+		if err != nil {
+			log.WithField("Message", message).WithError(err)
+			continue
+		}
+		switch messageJson.CommandCode {
+		case Host:
 			data := &hubData{
 				Client:   c,
-				Nickname: command[1],
+				Nickname: messageJson.Nickname,
 			}
 			c.hub.create <- data
-			continue
-		}
-		if command[0] == "start" {
-			gameUuid, _ := uuid.Parse(command[1])
+		case Start:
 			data := &hubData{
 				Client: c,
-				GameId: gameUuid,
+				GameId: messageJson.GameId,
 			}
 			c.hub.start <- data
-			continue
-		}
-		if command[0] == "join" {
-			//data := socketData{}
-			//err = json.Unmarshal([]byte(command[1]), &data)
-			//c.hub.join <- &data
-
-			gameUuid, _ := uuid.Parse(command[1])
+		case Join:
 			data := &hubData{
 				Client:   c,
-				GameId:   gameUuid,
-				Nickname: command[2],
+				GameId:   messageJson.GameId,
+				Nickname: messageJson.Nickname,
 			}
 			c.hub.join <- data
-			continue
-		}
-		if command[0] == "kick" {
-			gameUuid, _ := uuid.Parse(command[1])
+		case Kick:
 			data := &hubData{
 				Client:   c,
-				GameId:   gameUuid,
-				Nickname: command[2],
+				GameId:   messageJson.GameId,
+				Nickname: messageJson.Nickname,
 			}
 			c.hub.kick <- data
-			continue
-		}
-		if command[0] == "play" {
-			gameUuid, _ := uuid.Parse(command[1])
+		case Play:
 			socketData := &hubData{
 				Client: c,
-				GameId: gameUuid,
+				GameId: messageJson.GameId,
 			}
 			data := &gameData{
 				hubData: *socketData,
-				Command: command[2],
+				Command: messageJson.Data,
 			}
 			c.hub.play <- data
-			continue
-		}
-		if command[0] == "leave" {
-			gameUuid, _ := uuid.Parse(command[1])
+		case Leave:
 			socketData := &hubData{
 				Client: c,
-				GameId: gameUuid,
+				GameId: messageJson.GameId,
 			}
-
 			c.hub.leave <- socketData
-			continue
-		}
-		if command[0] == "status" {
-			gameUuid, _ := uuid.Parse(command[1])
+		case Status:
 			socketData := &hubData{
 				Client: c,
-				GameId: gameUuid,
+				GameId: messageJson.GameId,
 			}
-
 			c.hub.status <- socketData
-			continue
 		}
 	}
 }
