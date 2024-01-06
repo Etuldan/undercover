@@ -43,7 +43,7 @@ TODO
       "action":gameAction
    }
 }
-
+```
 | Variable | Type | Meaning |
 -----------------------------
 | errorCode | integer | If non 0, an error occurred. See enum Error |
@@ -56,7 +56,6 @@ TODO
 | gameTurn | integer | Determine the current player to play. See playerPosition |
 | gameAction | integer | If non 0, see enum Action |
 
-```
 ##### Player
 ```json
 {
