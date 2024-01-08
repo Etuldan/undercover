@@ -6,7 +6,7 @@ type Command struct {
 	Nickname    string      `json:"nickname"`
 	GameId      uuid.UUID   `json:"gameId"`
 	CommandCode CommandCode `json:"commandCode"`
-	Data        string      `json:"data"`
+	GameData    string      `json:"gameData"`
 }
 
 type CommandCode string

@@ -100,7 +100,7 @@ func (c *Client) readPump() {
 			}
 			data := &gameData{
 				hubData: *socketData,
-				Command: messageJson.Data,
+				Command: messageJson.GameData,
 			}
 			c.hub.play <- data
 		case Leave:

@@ -1,34 +1,43 @@
-# How to build
+# Undercover Websocket Server
 
-## Manual
-Move to src/websocket-server directory 
+## How to build
+
+### Manual
+
+Move to src/websocket-server directory
+
 - `go mod download`
 - `go build`
 
-## Using Docker
+### Using Docker
+
 `docker build -t undercover-server .`
 
-# Client communication with the Server
+## Client communication with the Server
+
 Each response from the server is in json format.
 The server should respond to every command, and should them message to each client when a game state changed.
 
-## Command
-### Message
-### Enums
-- CommandCode
+### Command
 
-| Code | Value |
-|---|---|
-| Host | host |
-| Start | start |
-| Join | join |
-| Kick | kick |
-| Play | play |
-| Leave | leave |
-| Status | status |
+```json
+{
+   "commandCode": commandCode,
+   "gameId": gameId,
+   "nickname": nickname,
+   "gameData": gameData
+}
+```
 
-## Response
-### Message
+| Variable | Type | Meaning |
+|---|---|---|
+| commandCode | integer | See enum CommandCode |
+| gameId | string | Unique Id of the game, GuidFormat |
+| nickname | string | Nickname used for the command |
+| gameData | string | Data to send to the game |
+
+### Response
+
 ```json
 {
    "error":{
@@ -61,7 +70,8 @@ The server should respond to every command, and should them message to each clie
 | gameTurn | integer | Determine the current player to play. See playerPosition |
 | gameAction | integer | If non 0, see enum Action |
 
-### Player
+- Player Object
+
 ```json
 {
    "nickname": playerNickname,
@@ -79,6 +89,19 @@ The server should respond to every command, and should them message to each clie
 | playerEliminated | boolean | Boolean to describe is the Player is eliminated |
 
 ### Enums
+
+- CommandCode
+
+| Code | Value |
+|---|---|
+| Host | host |
+| Start | start |
+| Join | join |
+| Kick | kick |
+| Play | play |
+| Leave | leave |
+| Status | status |
+
 - Error
 
 | Code | Value |
