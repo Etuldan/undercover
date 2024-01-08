@@ -18,7 +18,7 @@ services:
     networks:
       - seqnetwork
   undercover:
-    image: undercover:latest
+    image: undercover-server:latest
     depends_on:
       - seq
       - seqcli
